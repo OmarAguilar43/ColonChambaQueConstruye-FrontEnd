@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import PersonalInfoStep from './PersonalInfoStep';
@@ -8,143 +8,138 @@ import ProfessionalInfoStep from './ProfessionalInfoStep';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ApplicantFormType, applicantSchema } from '@/validations/applicantSchema';
 import { EmailCodeValidationStep } from '../auth/EmailCodeValidationStep';
-import Stepper from '../common/Stepper';
 
 export default function ApplicantSignUp() {
   const [step, setStep] = useState(1);
-  const [stepValid, setStepValid] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const methods = useForm<ApplicantFormType>({
     resolver: zodResolver(applicantSchema),
-    defaultValues: {  
-      name: '',
-      lastName: '',
-      address: '',
-      birthDate: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      career: '',
-      professionalSummary: '',
-      jobLocationPreference: '',
-      telefono: '',
-      telefonoCode: '+52', 
-      preferredHours: '',
-      employmentMode: '',
-      profilePhoto: null,
-      cvFile: undefined,
+    defaultValues: {
+      name: '', lastName: '', address: '', birthDate: '', email: '',
+      password: '', confirmPassword: '', telefono: '', telefonoCode: '+52',
+      career: '', professionalSummary: '', jobLocationPreference: '',
+      preferredHours: '', employmentMode: '', profilePhoto: null, cvFile: undefined,
     },
     mode: 'onSubmit',
-    shouldFocusError: true
+    shouldUnregister: false 
   });
 
-  const { control, handleSubmit, trigger, watch } = methods;
+  const { control, handleSubmit, trigger, getValues, watch } = methods;
 
-  const onSubmit = (data: ApplicantFormType) => {
-    console.log('Form submitted:', data);
-  };
+  const handleStepOneSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); 
+    
+    console.log("1. Iniciando validación...");
+    
+    const isValid = await trigger([
+      'name', 'lastName', 'address', 'birthDate',
+      'email', 'telefono', 'password', 'confirmPassword'
+    ]);
 
-  useEffect(() => {
-    const subscription = watch((value) => {
-      if (step === 1) {
-        const requiredFields: (keyof ApplicantFormType)[] = [
-          'name',
-          'lastName',
-          'address',
-          'birthDate',
-          'email',
-          'telefono',
-          'password',
-          'confirmPassword',
-        ];
-
-        const isFilled = requiredFields.every((field) => {
-          const val = value[field];
-          return val !== undefined && val !== null && val !== '';
-        });
-
-        setStepValid(isFilled);
-      } else {
-        setStepValid(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [step, watch]);
-
-  const handleNextStep = async () => {
-    if (step === 1) {
-      const fieldsToValidate: (keyof ApplicantFormType)[] = [
-        'name',
-        'lastName',
-        'address',
-        'birthDate',
-        'email',
-        'telefono',
-        'password',
-        'confirmPassword',
-      ];
-
-      
-      const ok = await trigger(fieldsToValidate);
-      if (!ok) return; 
+    if (!isValid) {
+      console.log("trono");
+      return; 
     }
 
-    
-    setStep((prev) => prev + 1);
-    setStepValid(false);
+    console.log("NOtrono.");
+    setIsLoading(true);
+
+    try {
+      const dataStep1 = getValues();
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      
+      console.log("Supongamos que funciono ");
+      
+      setStep(2); 
+      
+    } catch (error) {
+      console.error("NO funciono mamu el error es:", error);
+      alert("Hubo un error al guardar tus datos. Revisa la consola.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const getButtonText = () => {
-    if (step === 1) return 'Registrarse';
-    if (step === 2) return 'Continuar';
-    return 'Finalizar registro';
+  const handleCodeVerified = async (code: string) => {
+    setIsLoading(true);
+    try {
+      const email = getValues('email');
+      console.log(`SUpongamosqueverifico el codigo que es  ${code} para ${email}`);
+      
+      setStep(3);
+    } catch (error) {
+      console.error('Código inválido', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFinalSubmit = async (data: ApplicantFormType) => {
+    setIsLoading(true);
+    try {
+      console.log('Enviando Endpoint 3 :', data);
+      
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="container mx-auto max-w-2xl rounded-lg border border-zinc-200 bg-white p-12 shadow-sm">
-       <div className="mb-6">
-      <Stepper size={3} activeStep={step} />
-    </div>
       <div className="mb-8 space-y-8 text-center">
         <h1 className="text-3xl font-bold text-brand">Completa tu registro</h1>
-        <h2 className="mx-auto max-w-2xl text-lg text-[600]">
-          Rellena los campos para completar tu registro y acceder a todas las funciones que ofrece
-          la plataforma
+        <h2 className="mx-auto max-w-2xl text-lg text-gray-600">
+          {step === 2 
+            ? "Verifica tu identidad" 
+            : "Rellena los campos para completar tu registro y acceder a la plataforma"}
         </h2>
       </div>
 
       <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-8">
-          {step === 1 && <PersonalInfoStep control={control} />}
-          {step === 2 && <EmailCodeValidationStep
-                            email={watch('email')}
-                            onVerified={(code) => {
-                              console.log('codigo verificado',code)
-                              setStep(3)}}
-                            onBack={() => setStep(1)}
-                            onResend={() => console.log('Reenviar código')}/>
-}
-          {step === 3 && <ProfessionalInfoStep control={control} />}
-
-          
-
-          <div className="flex justify-center">
-            {step < 3 ? (
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                disabled={!stepValid}
+        
+        {step === 1 && (
+          <form className="mt-8 space-y-6">
+            <PersonalInfoStep control={control} />
+            
+            <div className="flex justify-center">
+              <Button 
+                type="button" 
+                onClick={handleStepOneSubmit}
+                disabled={isLoading}
               >
-                {getButtonText()}
+                {isLoading ? 'Cargando next step' : 'Continuar'}
               </Button>
-            ) : (
-              <Button type="submit">
-                {getButtonText()}
-              </Button>
-            )}
+            </div>
+          </form>
+        )}
+
+        {step === 2 && (
+          <div className="mt-8">
+            <EmailCodeValidationStep
+              email={watch('email')}
+              onVerified={handleCodeVerified}
+              onBack={() => setStep(1)}
+              onResend={() => console.log('Reenviando código...')}
+            />
           </div>
-        </form>
+        )}
+
+        {step === 3 && (
+          <form onSubmit={handleSubmit(handleFinalSubmit)} className="mt-8 space-y-6">
+            <ProfessionalInfoStep control={control} />
+
+            <div className="flex justify-center">
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Finalizando...' : 'Finalizar registro'}
+              </Button>
+            </div>
+          </form>
+        )}
+
       </FormProvider>
     </div>
   );

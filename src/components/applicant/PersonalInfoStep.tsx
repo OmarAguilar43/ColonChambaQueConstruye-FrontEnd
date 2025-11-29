@@ -71,7 +71,7 @@ export default function PersonalInfoStep({ control }: ApplicantDetailsStepProps)
         <FormPhone
           control={control}
           name="telefono"
-          codeName="telefonoCode"
+          codeame="telefonoCode"
           label="Número de teléfono"
           description="Ingresa tu número de teléfono a 10 dígitos (sin espacios ni guiones)."
         />
